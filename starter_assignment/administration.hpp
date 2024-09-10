@@ -30,6 +30,7 @@ private:
     int answer_menu;
     int max_random = 100;
     int group_random;
+    int increment = 0;
     string st_name;
     string st_nmbr;
     string grp_name;

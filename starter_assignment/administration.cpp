@@ -5,8 +5,6 @@
 
 #include "administration.hpp"
 
-//todo fix getline
-
 Administration::Administration() = default;
 
 void Administration::start() {
@@ -26,7 +24,6 @@ void Administration::start() {
         menu();
     }
 }
-
 
 void Administration::menu(){
     switch (answer_menu) {
@@ -110,16 +107,17 @@ void Administration::view_students() {
     }
 }
 
-//todo: error dived by 3
 void Administration::view_groups() {
     for (int i = 0; i < students.size(); i++) {
         cout << "Student group: " << groups[i] << "\n";
         cout << "Student name: " << students[i] << "\n";
-        //todo: diveded by 0 is 0 fix
-        if (!((i++) %3)){
+        increment++;
+
+        if (!(increment %3)){
             printf("\n");
         }
     }
+    printf("\n");
 }
 
 //todo: done? test
@@ -127,6 +125,7 @@ void Administration::search_student() {
     cout << "Give number of student pls: \n" ;
     cin.ignore(numeric_limits<streamsize>::max(), '\n'); // To discard any leftover characters
     getline (cin, st_nmbr);
+
     for (int i = 0; i < students.size(); i++) {
         if(st_nmbr == student_number[i]) {
             cout << "Student name: " << students[i] << "\n";
