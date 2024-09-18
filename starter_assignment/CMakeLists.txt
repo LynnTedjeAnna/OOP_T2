@@ -4,4 +4,6 @@ project(starter_assignment)
 set(CMAKE_CXX_STANDARD 26)
 
 add_executable(starter_assignment main.cpp
-        administration.cpp)
+        administration.cpp
+        student.cpp
+)

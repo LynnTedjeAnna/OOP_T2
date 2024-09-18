@@ -19,8 +19,9 @@ void Administration::start() {
                "7) quit program\n");
 
         do {
-            scanf("%d", &answer_menu);
+            cin >> answer_menu;
         } while (answer_menu > 7 || answer_menu == 0);
+        cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear input buffer after reading the menu option
         menu();
     }
 }
@@ -31,10 +32,10 @@ void Administration::menu(){
             add_student();
             break;
         case 2:
-            view_students();
+            student.print_all();
             break;
         case 3:
-            view_groups();
+            student.print_all_groups();
             break;
         case 4:
             search_student();
@@ -55,107 +56,41 @@ void Administration::menu(){
 
 void Administration::add_student() {
     cout << "Give number of student pls: \n" ;
-    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // To discard any leftover characters
-    getline (cin, st_nmbr);
-
-    for (int i = 0; i < students.size(); i++) {
-        if(st_nmbr == student_number[i]) {
-            printf("ERROR give unique student number\n\n");
-            start();
-        }
+    if (student.number_check()){
+        printf("ERROR give unique student number\n\n");
+        //start();
+        return;
     }
 
     cout << "Give name of student pls: \n" ;
-    getline (cin, st_name);
-    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // To discard any leftover characters
-
-    students.push_back(st_name);
-    student_number.push_back(st_nmbr);
-    gen_group();
-}
-void Administration::gen_group() {
-    group_random = rand() % max_random;
-    string string_grp_rnd = to_string(group_random);
-    string grp_base = "G1_PCS.";        //clear string everytime
-
-    if (students.size() == 1){
-        groups.push_back( grp_base.append(string_grp_rnd));
-        return;
-    }
-
-    //group max size is 3, so when divided by 3 and outcome is 0 new group has to be made
-    if (!(groups.size() % 3)){
-        // Appending the string.
-        groups.push_back( grp_base.append(string_grp_rnd));
-        return;
-    }
-
-    // Check if the vector is non-empty before accessing the last element
-    if (!groups.empty()) {
-        groups.push_back(groups[groups.size() - 1]);  // Push the last element into the vector
-    }
-
-
+    student.add();
+    student.gen_group();
 }
 
-void Administration::view_students() {
-    // Print Strings stored in Vector
-    for (int i = 0; i < students.size(); i++){
-        cout << "Student number: " << student_number[i] << "\n";
-        cout << "Student name: " << students[i] << "\n";
-        cout << "Student group: " << groups[i] << "\n\n";
-    }
-}
-
-void Administration::view_groups() {
-    for (int i = 0; i < students.size(); i++) {
-        cout << "Student group: " << groups[i] << "\n";
-        cout << "Student name: " << students[i] << "\n";
-        increment++;
-
-        if (!(increment %3)){
-            printf("\n");
-        }
-    }
-    printf("\n");
-}
-
-//todo: done? test
 void Administration::search_student() {
     cout << "Give number of student pls: \n" ;
-    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // To discard any leftover characters
-    getline (cin, st_nmbr);
-
-    for (int i = 0; i < students.size(); i++) {
-        if(st_nmbr == student_number[i]) {
-            cout << "Student name: " << students[i] << "\n";
-            cout << "Student number: " <<student_number[i] << "\n";
-            cout << "Student group: " << groups[i] << "\n";
-            return;
-        }
+    uint8_t index = student.number_check();
+    if (index) {
+        student.print((index-1));
     }
-    printf("No student with that number present\n\n");
+    else{
+        printf("No student with that number present\n\n");
+    }
 }
 
 void Administration::view_a_group() {
-    cout << "Give group name of student pls: \n" ;
-    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // To discard any leftover characters
-    getline (cin, grp_name);
-    for (int i = 0; i < students.size(); i++) {
-        if(grp_name == groups[i]) {
-            cout << "Student name: " << students[i] << "\n";
-            cout << "Student number: " <<student_number[i] << "\n";
-            cout << "Student group: " << groups[i] << "\n";
-            return;
-        }
+    cout << "Give group name of student pls: \n";
+    vector<uint8_t> indices = student.group_check();  // Get all indices of students in the group
+
+    if (!indices.empty()) {
+        student.group_print(indices);  // Print all students in the group
+    } else {
+        printf("No group with that name present\n\n");
     }
-    printf("No group with that name present\n\n");
 }
 
-//done? test
+
 void Administration::view_statistics() {
-    cout << "Course: " << "Object Oriented Programming" << "\n";
-    cout << "Students: " << students.size() << "\n";
-    cout << "Student number: " <<student_number.size() << "\n";
-    cout << "Groups: " << groups.size() << "\n\n";
+    cout << "Course: " << "Object Oriented Programming" << "\n\n";
+    student.print_all();
 }
