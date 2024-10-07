@@ -3,7 +3,9 @@ project(starter_assignment)
 
 set(CMAKE_CXX_STANDARD 26)
 
-add_executable(starter_assignment main.cpp
-        administration.cpp
-        student.cpp
+include_directories(include src)
+
+add_executable(starter_assignment src/main.cpp
+        src/administration.cpp
+        src/student.cpp
 )

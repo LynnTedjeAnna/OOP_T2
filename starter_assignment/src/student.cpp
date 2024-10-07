@@ -3,7 +3,7 @@
 //
 
 #include <iostream>
-#include "student.hpp"
+#include "../include/student.hpp"
 
 Student::Student() {}
 
