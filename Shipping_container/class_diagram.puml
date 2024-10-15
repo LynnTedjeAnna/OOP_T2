@@ -1,0 +1,83 @@
+@startuml
+
+skinparam classBackgroundColor<<container>> #ADD8E6
+skinparam classBackgroundColor<<full_size_container>> #90EE90
+skinparam classBackgroundColor<<half_size_container>> #FFFF99
+skinparam classBackgroundColor<<quarter_size_container>> #FFB6C1
+skinparam classBackgroundColor<<exception>> #F08080
+skinparam classBackgroundColor<<gui>> #FFDEAD
+skinparam classBackgroundColor<<network>> #DDA0DD
+
+title Container Shipping System UML Diagram (Improved Design)
+
+class container <<container>> {
+    +serial_number: int
+    +description: string
+    +origin_country: string
+    +calculate_handling_fee(): double
+}
+
+class full_size_container <<full_size_container>> {
+    +weight: double
+    +is_refrigerated: bool
+    +fee_per_kg: double = 0.91
+    +max_weight: double = 20000
+    +extra_fridge_fee: double = 0.08
+    +calculate_handling_fee(): double
+}
+
+class half_size_container <<half_size_container>> {
+    +volume: double
+    +fee_per_m3: double = 19.37
+    +max_volume: double = 40
+    +calculate_handling_fee(): double
+}
+
+class quarter_size_container <<quarter_size_container>> {
+    +fixed_fee: double = 1692.72
+    +calculate_handling_fee(): double
+}
+
+container <|-- full_size_container
+container <|-- half_size_container
+container <|-- quarter_size_container
+
+class shipping_company {
+    -containers: List<container>
+    +add_container(container: container)
+    +show_all_containers(): void
+    +process_container_data(): void
+}
+
+shipping_company o-- container
+
+class gui_handler <<gui>> {
+    +show_menu(): void
+    +get_user_input(): void
+    +display_containers(): void
+}
+
+gui_handler o-- shipping_company
+
+class network_handler <<network>> {
+    +open_connection(): void
+    +process_requests(): void
+    +close_connection(): void
+}
+
+network_handler o-- shipping_company
+
+class container_exception <<exception>> {
+    +message: string
+}
+
+class weight_exceeded_exception <<exception>> {
+}
+
+class volume_exceeded_exception <<exception>> {
+}
+
+container_exception <|-- weight_exceeded_exception
+container_exception <|-- volume_exceeded_exception
+
+@enduml
