@@ -8,7 +8,7 @@ skinparam classBackgroundColor<<exception>> #F08080
 skinparam classBackgroundColor<<gui>> #FFDEAD
 skinparam classBackgroundColor<<network>> #DDA0DD
 
-title Container Shipping System UML Diagram (Improved Design)
+title Container Shipping System UML Diagram (Improved Design with Multiplicity & Exceptions)
 
 class container <<container>> {
     +serial_number: int
@@ -49,7 +49,7 @@ class shipping_company {
     +process_container_data(): void
 }
 
-shipping_company o-- container
+shipping_company "1" o-- "*" container : contains
 
 class gui_handler <<gui>> {
     +show_menu(): void
@@ -57,7 +57,7 @@ class gui_handler <<gui>> {
     +display_containers(): void
 }
 
-gui_handler o-- shipping_company
+gui_handler "1" o-- "1" shipping_company : interacts with
 
 class network_handler <<network>> {
     +open_connection(): void
@@ -65,7 +65,7 @@ class network_handler <<network>> {
     +close_connection(): void
 }
 
-network_handler o-- shipping_company
+network_handler "1" o-- "1" shipping_company : communicates with
 
 class container_exception <<exception>> {
     +message: string
@@ -79,5 +79,8 @@ class volume_exceeded_exception <<exception>> {
 
 container_exception <|-- weight_exceeded_exception
 container_exception <|-- volume_exceeded_exception
+
+shipping_company "1" *-- "*" container_exception : handles
+container "1" *-- "*" container_exception : throws
 
 @enduml
