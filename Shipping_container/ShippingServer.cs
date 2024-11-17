@@ -6,6 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 
+
+//todo: ask, define maken voor tabel report grootte?
+
 namespace ContainerShipping
 {
     // Class to hold the state of the client session
@@ -13,23 +16,13 @@ namespace ContainerShipping
     {
         public string ExpectedCommand { get; set; } = "START"; // Initialize to START
         public Container CurrentContainer { get; set; } // To store the current container during the session
-        public List<ContainerData> ContainerRecords { get; set; } = new List<ContainerData>(); // List to hold container records
-        private int _containerIdCounter = 1000; // Start ID for containers
+        public List<Container> ContainerRecords { get; set; } = new List<Container>(); // List to hold container records
 
         // Method to add container data
-        public void AddContainerData()
-        {
-            if (CurrentContainer != null)
-            {
-                ContainerRecords.Add(new ContainerData
-                {
-                    Id = _containerIdCounter++,
-                    Weight = CurrentContainer.Weight,
-                    Volume = CurrentContainer.Volume,
-                    Refrid = CurrentContainer.IsRefrigerated() ? "YES" : "NO",
-                    Fee = CurrentContainer.CalculateFee(),
-                    ContainerType = CurrentContainer.GetType().Name
-                });
+        public void AddContainer() {
+            if (CurrentContainer != null) {
+                ContainerRecords.Add(CurrentContainer);
+                CurrentContainer = null;
             }
         }
     }
@@ -84,163 +77,173 @@ namespace ContainerShipping
                 Console.WriteLine("Connection closed.");
             }
         }
+private async Task ProcessCommand(string command, StreamWriter writer, ClientSession session, TcpClient client)
+{
+    // Check for STOP command
+    if (command == "STOP")
+    {
+        await writer.WriteLineAsync("ACK; Connection will be closed."); // Acknowledge STOP command
+        Console.WriteLine("STOP command received. Closing connection.");
+        await GenerateReport(writer, session); // Generate report before closing
+        client.Close(); // Close the connection immediately
+        return; // Exit the method early
+    }
 
-        private async Task ProcessCommand(string command, StreamWriter writer, ClientSession session, TcpClient client)
-        {
-            // Check for STOP command
-            if (command == "STOP")
+    switch (session.ExpectedCommand)
+    {
+        case "START":
+            if (command == "START")
             {
-                await writer.WriteLineAsync("ACK; Connection will be closed."); // Acknowledge STOP command
-                Console.WriteLine("STOP command received. Closing connection.");
-                client.Close(); // Close the connection immediately
-                return; // Exit the method early
+                await writer.WriteLineAsync("ACK"); // Acknowledge START
+                session.ExpectedCommand = "TYPE"; // Move to expecting TYPE
+                await writer.WriteLineAsync("TYPE"); // Indicate next expected command
+            }
+            else
+            {
+                await writer.WriteLineAsync("ERR;Expected START");
+            }
+            break;
+
+        case "TYPE":
+            if (command == "FULL" || command == "HALF" || command == "QUART")
+            {
+                session.CurrentContainer = CreateContainer(command); // Create the appropriate container based on type
+                if (session.CurrentContainer == null)
+                {
+                    await writer.WriteLineAsync("ERR;Failed to create container");
+                    return; // Exit if container creation fails
+                }
+
+                session.ExpectedCommand = command == "FULL" ? "FRIDGE" : command == "HALF" ? "VOLUME" : "STOP";
+                await writer.WriteLineAsync("ACK"); // Acknowledge TYPE
+
+                // Prepare for next command based on type
+                if (session.CurrentContainer is FullSizeContainer)
+                    await writer.WriteLineAsync("FRIDGE"); // Prompt for fridge info for FULL
+                else if (session.CurrentContainer is HalfSizeContainer)
+                    await writer.WriteLineAsync("VOLUME"); // Prompt for volume for HALF
+                else if (session.CurrentContainer is QuarterSizeContainer){
+                    await writer.WriteLineAsync("ACK"); // Acknowledge QUART input and end session
+                    session.ExpectedCommand = "START"; // Move to expecting TYPE
+                    session.AddContainer();
+                    await writer.WriteLineAsync("CONTAINER ADDED");
+                }
+            }
+            else
+            {
+                await writer.WriteLineAsync("ERR;Invalid Type");
+            }
+            break;
+
+        case "FRIDGE":
+            if (session.CurrentContainer == null)
+            {
+                await writer.WriteLineAsync("ERR;No container available for fridge setup");
+                return; // Exit if no container is available
             }
 
-            switch (session.ExpectedCommand)
+            if (command == "YES" || command == "NO")
             {
-                case "START":
-                    if (command == "START")
-                    {
-                        await writer.WriteLineAsync("ACK"); // Acknowledge START
-                        session.ExpectedCommand = "TYPE"; // Move to expecting TYPE
-                        await writer.WriteLineAsync("TYPE"); // Indicate next expected command
-                    }
-                    else
-                    {
-                        await writer.WriteLineAsync("ERR;Expected START");
-                    }
-                    break;
-
-                case "TYPE":
-                    if (command == "FULL" || command == "HALF" || command == "QUART")
-                    {
-                        session.CurrentContainer = CreateContainer(command); // Create the appropriate container based on type
-                        session.ExpectedCommand = command == "FULL" ? "FRIDGE" : command == "HALF" ? "VOLUME" : "STOP";
-                        await writer.WriteLineAsync("ACK"); // Acknowledge TYPE
-
-                        // Prepare for next command based on type
-                        if (session.CurrentContainer is FullSizeContainer)
-                            await writer.WriteLineAsync("FRIDGE"); // Prompt for fridge info for FULL
-                        else if (session.CurrentContainer is HalfSizeContainer)
-                            await writer.WriteLineAsync("VOLUME"); // Prompt for volume for HALF
-                        else
-                            await writer.WriteLineAsync("ACK"); // Acknowledge QUART input and end session
-                    }
-                    else
-                    {
-                        await writer.WriteLineAsync("ERR;Invalid Type");
-                    }
-                    break;
-
-                case "FRIDGE":
-                    if (command == "YES")
-                    {
-                        // Set refrigeration status in ContainerData
-                        session.CurrentContainer.IsRefrigerated = command == "YES";
-                        // Save to ContainerData
-                        session.AddContainerData(); // Assuming this method captures the current state in ContainerData
-                        await writer.WriteLineAsync("ACK");
-                        session.ExpectedCommand = "WEIGHT"; // Expecting weight input
-                        await writer.WriteLineAsync("WEIGHT"); // Prompt for weight
-                    }
-                    else if (command == "NO")
-                    {
-                        // Set refrigeration status in ContainerData
-                        session.CurrentContainer.IsRefrigerated = command == "NO";
-                        // Save to ContainerData
-                        session.AddContainerData(); // Assuming this method captures the current state in ContainerData
-                        await writer.WriteLineAsync("ACK");
-                        session.ExpectedCommand = "WEIGHT"; // Expecting weight input
-                        await writer.WriteLineAsync("WEIGHT"); // Prompt for weight
-                    }
-                    else
-                    {
-                        await writer.WriteLineAsync("ERR;Expected YES or NO");
-                    }
-                    break;
-
-                case "WEIGHT":
-                    if (int.TryParse(command, out int weight) && weight <= 20000)
-                    {
-                        session.CurrentContainer.Weight = weight; // Set the weight for FULL container
-                        session.AddContainerData(); // Add container data to the list
-                        await writer.WriteLineAsync("ACK");
-                        session.ExpectedCommand = "STOP"; // Session ends after receiving weight
-                        await writer.WriteLineAsync("ACK");
-                    }
-                    else
-                    {
-                        await writer.WriteLineAsync("ERR;Weight Exceeded");
-                    }
-                    break;
-
-                case "VOLUME":
-                    if (int.TryParse(command, out int volume) && volume <= 40)
-                    {
-                        session.CurrentContainer.Volume = volume; // Set the volume for HALF container
-                        session.AddContainerData(); // Add container data to the list
-                        await writer.WriteLineAsync("ACK");
-                        session.ExpectedCommand = "STOP"; // Session ends after receiving volume
-                        await writer.WriteLineAsync("ACK");
-                    }
-                    else
-                    {
-                        await writer.WriteLineAsync("ERR;Volume Exceeded");
-                    }
-                    break;
-
-                case "STOP":
-                    // After the last ACK, just stop and close the connection
-                    Console.WriteLine("Session ended. Closing connection.");
-                    await GenerateReport(writer, session); // Generate report before closing
-                    client.Close(); // Close the connection after reporting
-                    break;
-
-                default:
-                    await writer.WriteLineAsync("ERR;Unknown Command");
-                    break;
+                session.CurrentContainer.IsRefrigerated = (command == "YES");
+                await writer.WriteLineAsync("ACK");
+                session.ExpectedCommand = "WEIGHT"; // Expecting weight input
+                await writer.WriteLineAsync("WEIGHT"); // Prompt for weight
             }
-        }
+            else
+            {
+                await writer.WriteLineAsync("ERR;Expected YES or NO");
+            }
+            break;
+
+        case "WEIGHT":
+            if (session.CurrentContainer == null)
+            {
+                await writer.WriteLineAsync("ERR;No container available for weight input");
+                return; // Exit if no container is available
+            }
+
+            if (int.TryParse(command, out int weight) && weight <= 20000)
+            {
+                session.CurrentContainer.Weight = weight; // Set the weight for FULL container
+                await writer.WriteLineAsync("ACK");
+                session.ExpectedCommand = "START"; // Move to expecting TYPE
+                session.AddContainer();
+                await writer.WriteLineAsync("CONTAINER ADDED");
+
+            }
+            else
+            {
+                await writer.WriteLineAsync("ERR;Weight Exceeded");
+            }
+            break;
+
+        case "VOLUME":
+            if (session.CurrentContainer == null)
+            {
+                await writer.WriteLineAsync("ERR;No container available for volume input");
+                return; // Exit if no container is available
+            }
+
+            if (int.TryParse(command, out int volume) && volume <= 40)
+            {
+                session.CurrentContainer.Volume = volume; // Set the volume for HALF container
+                await writer.WriteLineAsync("ACK");
+                session.ExpectedCommand = "START"; // Move to expecting TYPE
+                session.AddContainer();
+                await writer.WriteLineAsync("CONTAINER ADDED");
+            }
+            else
+            {
+                await writer.WriteLineAsync("ERR;Volume Exceeded");
+            }
+            break;
+
+        default:
+            await writer.WriteLineAsync("ERR;Unknown Command");
+            break;
+    }
+}
 
         private async Task GenerateReport(StreamWriter writer, ClientSession session)
         {
             decimal grandTotal = 0m;
 
             // Calculate totals per container type
-            var fullTotal = CalculateContainerTotal(session.ContainerRecords, "FullSizeContainer");
-            var halfTotal = CalculateContainerTotal(session.ContainerRecords, "HalfSizeContainer");
-            var quartTotal = CalculateContainerTotal(session.ContainerRecords, "QuarterSizeContainer");
+            var fullTotal = CalculateContainerTotal(session.ContainerRecords, "FullSize");
+            var halfTotal = CalculateContainerTotal(session.ContainerRecords, "HalfSize");
+            var quartTotal = CalculateContainerTotal(session.ContainerRecords, "QuarterSize");
 
-            await writer.WriteLineAsync("\n--- Report ---");
+            await writer.WriteLineAsync("\n---------------------------------------------Report----------------------------------------------");
 
             // Full Size report
-            await writer.WriteLineAsync(String.Format("|{0, -10}|{1, -10}|{2, -10}|{3, -10}|{4, -10}|", "ID", "Weight", "Volume", "Refrid", "Fee"));
+            await writer.WriteLineAsync(String.Format("|{0, -15}|{1, -15}|{2, -15}|{3, -15}|{4, -15}|{5, -15}|","Type", "ID", "Weight", "Volume", "Refrid", "Fee"));
 
             foreach (var record in session.ContainerRecords)
             {
                 string weight = record.Weight.HasValue ? $"{record.Weight}kg" : "N/A";
                 string volume = record.Volume.HasValue ? $"{record.Volume}m3" : "N/A";
-                await writer.WriteLineAsync(String.Format("|{0, -10}|{1, -10}|{2, -10}|{3, -10}|{4, -10}|", record.Id, weight, volume, record.Refrid, $"€{record.Fee:F2}"));
+                await writer.WriteLineAsync(String.Format("|{0, -15}|{1, -15}|{2, -15}|{3, -15}|{4, -15}|{5, -15}|", record.GetType(), record.SerialNumber, weight, volume, record.IsRefrigerated, $"€{record.CalculateFee():F2}"));
             }
 
             // Final report
-            await writer.WriteLineAsync($"Full Total €{fullTotal:F2}");
-            await writer.WriteLineAsync($"Half Total €{halfTotal:F2}");
-            await writer.WriteLineAsync($"Quart Total €{quartTotal:F2}");
+            await writer.WriteLineAsync("-------------------------------------------------------------------------------------------------");
+            await writer.WriteLineAsync(String.Format("|{0, -15}|{1, -15}|{2, -15}|{3, -15}|{4, -15}|{5, -15}|", "Full Total", "", "", "", "", $"€{fullTotal:F2}"));
+            await writer.WriteLineAsync(String.Format("|{0, -15}|{1, -15}|{2, -15}|{3, -15}|{4, -15}|{5, -15}|", "Half Total", "", "", "", "", $"€{halfTotal:F2}"));
+            await writer.WriteLineAsync(String.Format("|{0, -15}|{1, -15}|{2, -15}|{3, -15}|{4, -15}|{5, -15}|", "Quarter Total", "", "", "", "", $"€{quartTotal:F2}"));
 
             grandTotal = fullTotal + halfTotal + quartTotal;
-
-            await writer.WriteLineAsync($"Grand Total €{grandTotal:F2}");
+            await writer.WriteLineAsync(String.Format("|{0, -15}|{1, -15}|{2, -15}|{3, -15}|{4, -15}|{5, -15}|", "Grand Total", "", "", "", "", $"€{grandTotal:F2}"));
+            await writer.WriteLineAsync("-------------------------------------------------------------------------------------------------\n");
         }
 
-        private decimal CalculateContainerTotal(List<ContainerData> containers, string containerType)
+        private decimal CalculateContainerTotal(List<Container> containers, string containerType)
         {
             decimal total = 0m;
             foreach (var container in containers)
             {
-                if (container.ContainerType == containerType)
+                if (container.GetType() == containerType)
                 {
-                    total += container.Fee;
+                    total += container.CalculateFee();
                 }
             }
             return total;

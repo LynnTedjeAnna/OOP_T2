@@ -9,6 +9,7 @@ namespace ContainerShipping
         public const int MaxVolume = 40;
 
         private int? _volume;  // Nullable volume to fit the abstract base class
+        private bool _currentRefrig;  // Field to store the refrigerated status
 
         public override int? Volume
         {
@@ -35,6 +36,13 @@ namespace ContainerShipping
             }
         }
 
+        // Implementing the IsRefrigerated property
+        public override bool IsRefrigerated
+        {
+            get => _currentRefrig;    // Return the current refrigerated status
+            set => _currentRefrig = value;  // Set the refrigerated status
+        }
+
         public override decimal CalculateFee()
         {
             if (!_volume.HasValue)
@@ -44,9 +52,9 @@ namespace ContainerShipping
             return _volume.Value * FeePerM3;
         }
 
-        public override bool IsRefrigerated()
+        public override string GetType()
         {
-            return false;  // Half-size containers are not refrigerated
+            return "HalfSize";
         }
     }
 }

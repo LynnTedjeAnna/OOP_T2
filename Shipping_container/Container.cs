@@ -7,14 +7,14 @@ public abstract class Container
     public string OriginCountry { get; set; }
     public abstract int? Weight { get; set; }
     public abstract int? Volume { get; set; }
+    public abstract bool IsRefrigerated { get; set; }
 
     protected Container()
     {
         SerialNumber = _serialNumberCounter++;
     }
 
-    public abstract decimal CalculateFee();
-
     // Abstract method that will be overridden in subclasses
-    public abstract bool IsRefrigerated();
+    public abstract decimal CalculateFee();
+    public abstract string GetType();
 }

@@ -10,7 +10,14 @@ namespace ContainerShipping
         private bool _currentRefrig;
 
         private int? _weight;  // Nullable weight to fit the abstract base class
-        private int? _volume = 0;  // Volume is fixed to 0
+        private int? _volume = null;  // Volume is fixed to null
+
+        // Implementing the IsRefrigerated property
+        public override bool IsRefrigerated
+        {
+            get => _currentRefrig;    // Return the current refrigerated status
+            set => _currentRefrig = value;  // Set the refrigerated status
+        }
 
         public override int? Weight
         {
@@ -25,14 +32,13 @@ namespace ContainerShipping
             }
         }
 
-        // Volume is fixed to 0 for this container
         public override int? Volume
         {
             get => _volume;
             set
             {
-                // Prevent modifying volume from outside
-                _volume = 0;
+                // Quarter-size containers should not have volume set, so throw an exception if attempted
+                throw new InvalidOperationException("Volume is not applicable for QuarterSizeContainer.");
             }
         }
 
@@ -52,16 +58,10 @@ namespace ContainerShipping
             return fee;
         }
 
-        // Property to check if the container is refrigerated
-        public override bool IsRefrigerated()
+        // Override GetType to return a custom string
+        public override string GetType()
         {
-            return _currentRefrig;
-        }
-
-        // Set refrigerated status
-        public void SetRefrigerated(bool refrigerated)
-        {
-            _currentRefrig = refrigerated;
+            return "FullSize";
         }
     }
 }

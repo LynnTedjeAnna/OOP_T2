@@ -9,6 +9,7 @@ namespace ContainerShipping
 
         private int? _weight = null;  // Nullable weight for consistency with the base class
         private int? _volume = null;  // Nullable volume for consistency with the base class
+        private bool _currentRefrig;  // Field to store the refrigerated status
 
         // Quarter-size containers don't use weight or volume, so we'll just return null here
         public override int? Weight
@@ -31,14 +32,21 @@ namespace ContainerShipping
             }
         }
 
+        // Implementing the IsRefrigerated property
+        public override bool IsRefrigerated
+        {
+            get => _currentRefrig;    // Return the current refrigerated status
+            set => _currentRefrig = value;  // Set the refrigerated status
+        }
+
         public override decimal CalculateFee()
         {
             return FixedFee;
         }
 
-        public override bool IsRefrigerated()
+        public override string GetType()
         {
-            return false;  // Quarter-size containers are not refrigerated
+            return "QuarterSize";
         }
     }
 }
