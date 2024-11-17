@@ -1,14 +1,10 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using ContainerShipping;
 
-namespace ContainerShipping
+public static class Program
 {
-    class Program
+    public static async Task Main(string[] args)
     {
-        static async Task Main(string[] args)
-        {
-            ShippingServer server = new ShippingServer(23);
-            await server.StartAsync();
-        }
+        var server = new ShippingServer(23); // Start the server on port 23
+        await server.StartAsync(); // Start the server asynchronously
     }
 }

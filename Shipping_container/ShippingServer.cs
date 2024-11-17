@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic; // For List<T>
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -12,21 +12,25 @@ namespace ContainerShipping
     public class ClientSession
     {
         public string ExpectedCommand { get; set; } = "START"; // Initialize to START
-        public string ContainerType { get; set; }
+        public Container CurrentContainer { get; set; } // To store the current container during the session
         public List<ContainerData> ContainerRecords { get; set; } = new List<ContainerData>(); // List to hold container records
         private int _containerIdCounter = 1000; // Start ID for containers
 
         // Method to add container data
-        public void AddContainerData(string weight, string volume, string refrid, decimal fee)
+        public void AddContainerData()
         {
-            ContainerRecords.Add(new ContainerData
+            if (CurrentContainer != null)
             {
-                Id = _containerIdCounter++,
-                Weight = weight,
-                Volume = volume,
-                Refrid = refrid,
-                Fee = fee
-            });
+                ContainerRecords.Add(new ContainerData
+                {
+                    Id = _containerIdCounter++,
+                    Weight = CurrentContainer.Weight,
+                    Volume = CurrentContainer.Volume,
+                    Refrid = CurrentContainer.IsRefrigerated() ? "YES" : "NO",
+                    Fee = CurrentContainer.CalculateFee(),
+                    ContainerType = CurrentContainer.GetType().Name
+                });
+            }
         }
     }
 
@@ -81,7 +85,7 @@ namespace ContainerShipping
             }
         }
 
-        private async Task ProcessCommand(string command, StreamWriter writer, ClientSession session, TcpClient client) // Accept client here
+        private async Task ProcessCommand(string command, StreamWriter writer, ClientSession session, TcpClient client)
         {
             // Check for STOP command
             if (command == "STOP")
@@ -110,25 +114,17 @@ namespace ContainerShipping
                 case "TYPE":
                     if (command == "FULL" || command == "HALF" || command == "QUART")
                     {
-                        session.ContainerType = command;
+                        session.CurrentContainer = CreateContainer(command); // Create the appropriate container based on type
+                        session.ExpectedCommand = command == "FULL" ? "FRIDGE" : command == "HALF" ? "VOLUME" : "STOP";
                         await writer.WriteLineAsync("ACK"); // Acknowledge TYPE
 
                         // Prepare for next command based on type
-                        if (session.ContainerType == "FULL")
-                        {
-                            session.ExpectedCommand = "FRIDGE";
-                            await writer.WriteLineAsync("FRIDGE"); // Prompt for fridge info
-                        }
-                        else if (session.ContainerType == "HALF")
-                        {
-                            session.ExpectedCommand = "VOLUME";
-                            await writer.WriteLineAsync("VOLUME"); // Prompt for volume
-                        }
-                        else // QUART
-                        {
-                            await writer.WriteLineAsync("ACK"); // Acknowledge QUART input
-                            session.ExpectedCommand = "END"; // No more input needed for QUART
-                        }
+                        if (session.CurrentContainer is FullSizeContainer)
+                            await writer.WriteLineAsync("FRIDGE"); // Prompt for fridge info for FULL
+                        else if (session.CurrentContainer is HalfSizeContainer)
+                            await writer.WriteLineAsync("VOLUME"); // Prompt for volume for HALF
+                        else
+                            await writer.WriteLineAsync("ACK"); // Acknowledge QUART input and end session
                     }
                     else
                     {
@@ -137,8 +133,22 @@ namespace ContainerShipping
                     break;
 
                 case "FRIDGE":
-                    if (command == "YES" || command == "NO")
+                    if (command == "YES")
                     {
+                        // Set refrigeration status in ContainerData
+                        session.CurrentContainer.IsRefrigerated = command == "YES";
+                        // Save to ContainerData
+                        session.AddContainerData(); // Assuming this method captures the current state in ContainerData
+                        await writer.WriteLineAsync("ACK");
+                        session.ExpectedCommand = "WEIGHT"; // Expecting weight input
+                        await writer.WriteLineAsync("WEIGHT"); // Prompt for weight
+                    }
+                    else if (command == "NO")
+                    {
+                        // Set refrigeration status in ContainerData
+                        session.CurrentContainer.IsRefrigerated = command == "NO";
+                        // Save to ContainerData
+                        session.AddContainerData(); // Assuming this method captures the current state in ContainerData
                         await writer.WriteLineAsync("ACK");
                         session.ExpectedCommand = "WEIGHT"; // Expecting weight input
                         await writer.WriteLineAsync("WEIGHT"); // Prompt for weight
@@ -152,11 +162,11 @@ namespace ContainerShipping
                 case "WEIGHT":
                     if (int.TryParse(command, out int weight) && weight <= 20000)
                     {
-                        decimal fee = CalculateFee("FULL", weight); // Calculate fee based on weight
-                        session.AddContainerData($"{weight}kg", "N/A", "YES", fee); // Add container data
-                        await writer.WriteLineAsync("ACK"); // Acknowledge the weight input
-                        session.ExpectedCommand = "END"; // All data received for FULL
-                        await writer.WriteLineAsync("ACK"); // Acknowledge ending the session
+                        session.CurrentContainer.Weight = weight; // Set the weight for FULL container
+                        session.AddContainerData(); // Add container data to the list
+                        await writer.WriteLineAsync("ACK");
+                        session.ExpectedCommand = "STOP"; // Session ends after receiving weight
+                        await writer.WriteLineAsync("ACK");
                     }
                     else
                     {
@@ -167,11 +177,11 @@ namespace ContainerShipping
                 case "VOLUME":
                     if (int.TryParse(command, out int volume) && volume <= 40)
                     {
-                        decimal fee = CalculateFee("HALF", volume); // Calculate fee based on volume
-                        session.AddContainerData("N/A", $"{volume}m3", "N/A", fee); // Add container data
-                        await writer.WriteLineAsync("ACK"); // Acknowledge the volume input
-                        session.ExpectedCommand = "END"; // All data received for HALF
-                        await writer.WriteLineAsync("ACK"); // Acknowledge ending the session
+                        session.CurrentContainer.Volume = volume; // Set the volume for HALF container
+                        session.AddContainerData(); // Add container data to the list
+                        await writer.WriteLineAsync("ACK");
+                        session.ExpectedCommand = "STOP"; // Session ends after receiving volume
+                        await writer.WriteLineAsync("ACK");
                     }
                     else
                     {
@@ -179,108 +189,76 @@ namespace ContainerShipping
                     }
                     break;
 
-                case "END":
-                    await writer.WriteLineAsync("ACK"); // Acknowledge ending the session
+                case "STOP":
+                    // After the last ACK, just stop and close the connection
+                    Console.WriteLine("Session ended. Closing connection.");
+                    await GenerateReport(writer, session); // Generate report before closing
+                    client.Close(); // Close the connection after reporting
                     break;
 
                 default:
                     await writer.WriteLineAsync("ERR;Unknown Command");
                     break;
             }
-
-            // If the command has reached END, close the connection
-            if (session.ExpectedCommand == "END")
-            {
-                Console.WriteLine("Ending session and closing connection.");
-                await Task.Delay(100); // Small delay before closing to ensure client gets the last response
-                client.Close();
-            }
         }
 
         private async Task GenerateReport(StreamWriter writer, ClientSession session)
         {
-            decimal grandTotal = 0m; // Initialize grand total
+            decimal grandTotal = 0m;
 
             // Calculate totals per container type
-            var fullTotal = CalculateContainerTotal(session.ContainerRecords, "FULL");
-            var halfTotal = CalculateContainerTotal(session.ContainerRecords, "HALF");
-            var quartTotal = CalculateContainerTotal(session.ContainerRecords, "QUART");
+            var fullTotal = CalculateContainerTotal(session.ContainerRecords, "FullSizeContainer");
+            var halfTotal = CalculateContainerTotal(session.ContainerRecords, "HalfSizeContainer");
+            var quartTotal = CalculateContainerTotal(session.ContainerRecords, "QuarterSizeContainer");
 
-            // Generate the report
             await writer.WriteLineAsync("\n--- Report ---");
 
             // Full Size report
-            await writer.WriteLineAsync("Id   Weight    Volume   Refrid   Fee");
+            await writer.WriteLineAsync(String.Format("|{0, -10}|{1, -10}|{2, -10}|{3, -10}|{4, -10}|", "ID", "Weight", "Volume", "Refrid", "Fee"));
+
             foreach (var record in session.ContainerRecords)
             {
-                if (record.Refrid != null && record.Refrid != "N/A" && record.Refrid != "")
-                {
-                    await writer.WriteLineAsync($"{record.Id} {record.Weight} {record.Volume ?? "N/A"} {record.Refrid} €{record.Fee:F2}");
-                }
+                string weight = record.Weight.HasValue ? $"{record.Weight}kg" : "N/A";
+                string volume = record.Volume.HasValue ? $"{record.Volume}m3" : "N/A";
+                await writer.WriteLineAsync(String.Format("|{0, -10}|{1, -10}|{2, -10}|{3, -10}|{4, -10}|", record.Id, weight, volume, record.Refrid, $"€{record.Fee:F2}"));
             }
-            await writer.WriteLineAsync($"Total €{fullTotal:F2}\n");
 
-            // Half Size report
-            await writer.WriteLineAsync("Id   Weight    Volume   Refrid   Fee");
-            foreach (var record in session.ContainerRecords)
-            {
-                if (record.Volume != null && record.Volume != "N/A")
-                {
-                    await writer.WriteLineAsync($"{record.Id} {record.Weight ?? "N/A"} {record.Volume} {record.Refrid ?? "N/A"} €{record.Fee:F2}");
-                }
-            }
-            await writer.WriteLineAsync($"Total €{halfTotal:F2}\n");
+            // Final report
+            await writer.WriteLineAsync($"Full Total €{fullTotal:F2}");
+            await writer.WriteLineAsync($"Half Total €{halfTotal:F2}");
+            await writer.WriteLineAsync($"Quart Total €{quartTotal:F2}");
 
-            // Quart Size report (you can implement additional logic if needed)
-            await writer.WriteLineAsync("Total €{quartTotal:F2}");
+            grandTotal = fullTotal + halfTotal + quartTotal;
+
+            await writer.WriteLineAsync($"Grand Total €{grandTotal:F2}");
         }
 
-        // Method to calculate the fee for the container
-        private decimal CalculateFee(string containerType, int value)
+        private decimal CalculateContainerTotal(List<ContainerData> containers, string containerType)
         {
-            decimal fee = 0;
+            decimal total = 0m;
+            foreach (var container in containers)
+            {
+                if (container.ContainerType == containerType)
+                {
+                    total += container.Fee;
+                }
+            }
+            return total;
+        }
 
-            // Set fee rates based on container type
+        private Container CreateContainer(string containerType)
+        {
             switch (containerType)
             {
                 case "FULL":
-                    fee = value * 1.02m; // Example fee rate for FULL container
-                    break;
+                    return new FullSizeContainer();
                 case "HALF":
-                    fee = value * 19.34m; // Example fee rate for HALF container (example rate)
-                    break;
+                    return new HalfSizeContainer();
                 case "QUART":
-                    fee = 1692.72m; // Example flat rate for QUART container
-                    break;
+                    return new QuarterSizeContainer();
+                default:
+                    return null;
             }
-
-            // Round fee to 2 decimal places
-            return Math.Round(fee, 2);
-        }
-
-        // Method to calculate the total fee for a specific container type
-        private decimal CalculateContainerTotal(List<ContainerData> containerRecords, string containerType)
-        {
-            decimal total = 0m;
-
-            // Calculate total fee for the specified container type
-            foreach (var record in containerRecords)
-            {
-                if (containerType == "FULL" && record.Weight != null)
-                {
-                    total += record.Fee;
-                }
-                else if (containerType == "HALF" && record.Volume != null && record.Volume != "N/A")
-                {
-                    total += record.Fee;
-                }
-                else if (containerType == "QUART" && record.Volume == null)
-                {
-                    total += record.Fee;
-                }
-            }
-
-            return total;
         }
     }
 }
