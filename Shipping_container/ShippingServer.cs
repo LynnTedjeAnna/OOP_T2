@@ -51,9 +51,8 @@ namespace ContainerShipping
         private async Task HandleClientAsync(TcpClient client)
         {
             using NetworkStream stream = client.GetStream();
-            using var reader = new StreamReader(stream, Encoding.ASCII);
-            using var writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true };
-
+            using StreamReader reader = new StreamReader(stream, Encoding.ASCII);
+            using StreamWriter writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true };
             await writer.WriteLineAsync("WELCOME");
 
             ClientSession session = new ClientSession(); // Create a new session for the client

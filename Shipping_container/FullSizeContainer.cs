@@ -9,13 +9,13 @@ namespace ContainerShipping
         public const int MaxWeight = 20000;
         private bool _currentRefrig;
 
-        private int? _weight;  // Nullable weight to fit the abstract base class
-        private int? _volume = null;  // Volume is fixed to null
+        private int? _weight;           // Nullable weight to fit the abstract base class
+        private int? _volume = null;    // Volume is fixed to null
 
         // Implementing the IsRefrigerated property
         public override bool IsRefrigerated
         {
-            get => _currentRefrig;    // Return the current refrigerated status
+            get => _currentRefrig;          // Return the current refrigerated status
             set => _currentRefrig = value;  // Set the refrigerated status
         }
 
