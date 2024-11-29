@@ -1,10 +1,10 @@
-﻿using ContainerShipping;
+﻿namespace Shipping_container;
 
 public static class Program
 {
-    public static async Task Main(string[] args)
+    public static void Main(string[] args)
     {
-        var server = new ShippingServer(23); // Start the server on port 23
-        await server.StartAsync(); // Start the server asynchronously
+        var server = new ShippingServer(); // Start the server on port 23
+        server.Start(); // Start the server asynchronously
     }
 }

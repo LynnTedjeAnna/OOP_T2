@@ -1,22 +1,35 @@
-namespace ContainerShipping
+namespace Shipping_container
 {
     /// <summary>
     /// Represents a half-size container.
     /// </summary>
     public class HalfSizeContainer : Container
     {
+        /// <summary>
+        /// The fee per cubic meter for a half-size container.
+        /// </summary>
         public const decimal FeePerM3 = 19.37m;
+
+        /// <summary>
+        /// The maximum volume allowed for a half-size container.
+        /// </summary>
         public const int MaxVolume = 40;
 
-        private int? _volume;  // Nullable volume to fit the abstract base class
-        private bool _currentRefrig;  // Field to store the refrigerated status
+        private int _volume;
 
-        public override int? Volume
+        /// <summary>
+        /// Gets or sets the volume of the container.
+        /// </summary>
+        /// <value>
+        /// The volume of the container.
+        /// </value>
+        /// <exception cref="ExceededVolumeException">Thrown when the volume exceeds the maximum allowed.</exception>
+        public int Volume
         {
             get => _volume;
             set
             {
-                if (value.HasValue && value.Value > MaxVolume)
+                if (value > MaxVolume)
                 {
                     throw new ExceededVolumeException("Volume Exceeded");
                 }
@@ -24,37 +37,38 @@ namespace ContainerShipping
             }
         }
 
-        private int? _weight = null;  // Nullable weight, as weight is not used for this container type
-
-        public override int? Weight
-        {
-            get => _weight;
-            set
-            {
-                // Weight is not typically set for HalfSizeContainer, so you could throw an exception if desired.
-                throw new InvalidOperationException("Weight is not applicable for HalfSizeContainer.");
-            }
-        }
-
-        // Implementing the IsRefrigerated property
-        public override bool IsRefrigerated
-        {
-            get => _currentRefrig;    // Return the current refrigerated status
-            set => _currentRefrig = value;  // Set the refrigerated status
-        }
-
+        /// <summary>
+        /// Calculates the fee for the half-size container based on its volume.
+        /// </summary>
+        /// <returns>
+        /// The fee for the container.
+        /// </returns>
         public override decimal CalculateFee()
         {
-            if (!_volume.HasValue)
-            {
-                throw new InvalidOperationException("Volume must be set before calculating the fee.");
-            }
-            return _volume.Value * FeePerM3;
+            return _volume * FeePerM3;
         }
 
+        /// <summary>
+        /// Gets the type of the container.
+        /// </summary>
+        /// <returns>
+        /// A string representing the container type (e.g., "HalfSize").
+        /// </returns>
         public override string GetType()
         {
             return "HalfSize";
+        }
+
+        /// <summary>
+        /// Returns a string that represents the current half-size container.
+        /// </summary>
+        /// <returns>
+        /// A string representing the half-size container with its properties.
+        /// </returns>
+        public override string ToString()
+        {
+            string volume = $"{Volume}m3";
+            return String.Format("|{0, -10}|{1, -10}|{2, -10}|{3, -10}|{4, -10}|{5, -10}|{5, -10}", SerialNumber, GetType(), OriginCountry, "N/A","N/A", volume, CalculateFee().ToString("F2"));
         }
     }
 }

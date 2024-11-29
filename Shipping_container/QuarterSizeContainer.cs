@@ -1,52 +1,46 @@
-namespace ContainerShipping
+namespace Shipping_container
 {
     /// <summary>
     /// Represents a quarter-size container.
     /// </summary>
     public class QuarterSizeContainer : Container
     {
-        public const decimal FixedFee = 1692.72m;
+        /// <summary>
+        /// The fixed fee for a quarter-size container.
+        /// </summary>
+        private const decimal FixedFee = 1692.72m;
 
-        private int? _weight = null;  // Nullable weight for consistency with the base class
-        private int? _volume = null;  // Nullable volume for consistency with the base class
-        private bool _currentRefrig;  // Field to store the refrigerated status
-
-        // Quarter-size containers don't use weight or volume, so we'll just return null here
-        public override int? Weight
-        {
-            get => _weight;
-            set
-            {
-                // Quarter-size containers should not have weight set, so throw an exception if attempted
-                throw new InvalidOperationException("Weight is not applicable for QuarterSizeContainer.");
-            }
-        }
-
-        public override int? Volume
-        {
-            get => _volume;
-            set
-            {
-                // Quarter-size containers should not have volume set, so throw an exception if attempted
-                throw new InvalidOperationException("Volume is not applicable for QuarterSizeContainer.");
-            }
-        }
-
-        // Implementing the IsRefrigerated property
-        public override bool IsRefrigerated
-        {
-            get => _currentRefrig;    // Return the current refrigerated status
-            set => _currentRefrig = value;  // Set the refrigerated status
-        }
-
+        /// <summary>
+        /// Calculates the fee for the quarter-size container.
+        /// </summary>
+        /// <returns>
+        /// The fixed fee for the quarter-size container.
+        /// </returns>
         public override decimal CalculateFee()
         {
             return FixedFee;
         }
 
+        /// <summary>
+        /// Gets the type of the container.
+        /// </summary>
+        /// <returns>
+        /// A string representing the container type (e.g., "QuarterSize").
+        /// </returns>
         public override string GetType()
         {
-            return "QuarterSize";
+            return "QuartSize";
+        }
+
+        /// <summary>
+        /// Returns a string that represents the current quarter-size container.
+        /// </summary>
+        /// <returns>
+        /// A string representing the quarter-size container with its properties.
+        /// </returns>
+        public override string ToString()
+        {
+            return String.Format("|{0, -10}|{1, -10}|{2, -10}|{3, -10}|{4, -10}|{5, -10}|{6, -10}", SerialNumber, GetType(), OriginCountry,"N/A", "N/A", "N/A", CalculateFee());
         }
     }
 }

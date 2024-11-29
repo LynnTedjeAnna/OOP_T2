@@ -1,264 +1,252 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading.Tasks;
-using System.IO;
 
-namespace ContainerShipping
+namespace Shipping_container
 {
-    // Class to hold the state of the client session
-    public class ClientSession
-    {
-        public string ExpectedCommand { get; set; } = "START"; // Initialize to START
-        public Container CurrentContainer { get; set; } // To store the current container during the session
-        public List<Container> ContainerRecords { get; set; } = new List<Container>(); // List to hold container records
-
-        // Method to add container data
-        public void AddContainer() {
-            if (CurrentContainer != null) {
-                ContainerRecords.Add(CurrentContainer);
-                CurrentContainer = null;
-            }
-        }
-    }
-
 
     public class ShippingServer
     {
+        private List<Container> ContainerRecords { get; set; } = new List<Container>(); // List to hold container records
         private readonly TcpListener _listener;
 
-        public ShippingServer(int port)
+        /// <summary>
+        /// Initializes a new instance of the ShippingServer class and sets up the listener on port 23.
+        /// </summary>
+        public ShippingServer()
         {
-            _listener = new TcpListener(IPAddress.Any, port);
+            _listener = new TcpListener(IPAddress.Any, 23);
         }
 
-        public async Task StartAsync()
+        /// <summary>
+        /// Starts the server and listens for incoming client connections.
+        /// </summary>
+        public Task Start()
         {
             _listener.Start();
-            Console.WriteLine("Server started... Listening for connections.");
+            Console.WriteLine("Server started on port 23...");
 
             while (true)
             {
-                TcpClient client = await _listener.AcceptTcpClientAsync();
-                _ = Task.Run(() => HandleClientAsync(client)); // Handle each client in a new task
+                TcpClient client = _listener.AcceptTcpClient();
+                Task.Run(() => HandleClient(client));
             }
         }
 
-        private async Task HandleClientAsync(TcpClient client)
+        /// <summary>
+        /// Handles communication with a connected client.
+        /// </summary>
+        /// <param name="client">The connected TcpClient instance.</param>
+        private void HandleClient(TcpClient client)
         {
             using NetworkStream stream = client.GetStream();
             using StreamReader reader = new StreamReader(stream, Encoding.ASCII);
             using StreamWriter writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true };
-            await writer.WriteLineAsync("WELCOME");
-
-            ClientSession session = new ClientSession(); // Create a new session for the client
+            writer.WriteLine("WELCOME");
 
             try
             {
-                string line = await reader.ReadLineAsync();
+                string line = reader.ReadLine();
                 while (line != null)
                 {
-                    await ProcessCommand(line.Trim().ToUpper(), writer, session, client); // Pass client to the method
+                    ProcessCommand(line.Trim().ToUpper(), writer, client, reader); // Pass client to the method
                 }
             }
             catch (Exception ex)
             {
-                await writer.WriteLineAsync($"ERR;{ex.Message}");
+                writer.WriteLine($"ERR;{ex.Message}");
             }
         }
 
+        /// <summary>
+        /// Handles logic for creating a full-size container.
+        /// </summary>
+        /// <param name="writer">StreamWriter to send responses to the client.</param>
+        /// <param name="reader">StreamReader to receive input from the client.</param>
+        private void FullLogic(StreamWriter writer, StreamReader reader)
+        {
+            // Step 1: Prompt for weight
+            writer.WriteLine("WEIGHT"); // Prompt client for weight
+            string weightInput = reader.ReadLine(); // Read weight from client
 
-    private async Task ProcessCommand(string command, StreamWriter writer, ClientSession session, TcpClient client)
-    {
-        if (session.ExpectedCommand == "START")
-        {
-            await writer.WriteLineAsync("ACK");         // Acknowledge START
-            session.ExpectedCommand = "TYPE";           // Move to expecting TYPE
-            await writer.WriteLineAsync("TYPE");        // Indicate next expected command
-        }
-        else if (session.ExpectedCommand == "TYPE")
-        {
-            
-        }
-        if (session.ExpectedCommand == "STOP")
-        switch (session.ExpectedCommand)
-        {
-            case "STOP":
+            if (!int.TryParse(weightInput, out int weight))
             {
-                if (command == "STOP")
-                {
-                    await writer.WriteLineAsync("ACK;");        // Acknowledge STOP command
-                    Console.WriteLine("ACK. Closing connection.");
-                    await GenerateReport(writer, session);      // Generate report before closing
-                    client.Close();                             // Close the connection immediately
-                }
-                else
-                {
-                    await writer.WriteLineAsync("ERR;Expected STOP");
-                    command = "STOP";
-                }
-                break;
+                throw new InvalidOperationException("Invalid weight input from client.");
             }
-            case "TYPE":
-                if (command == "FULL" || command == "HALF" || command == "QUART")
-                {
-                    session.CurrentContainer = CreateContainer(command); // Create the appropriate container based on type
-                    if (session.CurrentContainer == null)
-                    {
-                        await writer.WriteLineAsync("ERR;Failed to create container");
-                        return; // Exit if container creation fails
-                    }
-
-                    session.ExpectedCommand = command == "FULL" ? "FRIDGE" : command == "HALF" ? "VOLUME" : "STOP";
-                    await writer.WriteLineAsync("ACK"); // Acknowledge TYPE
-
-                    // Prepare for next command based on type
-                    if (session.CurrentContainer is FullSizeContainer)
-                        await writer.WriteLineAsync("FRIDGE"); // Prompt for fridge info for FULL
-                    else if (session.CurrentContainer is HalfSizeContainer)
-                        await writer.WriteLineAsync("VOLUME"); // Prompt for volume for HALF
-                    else if (session.CurrentContainer is QuarterSizeContainer){
-                        await writer.WriteLineAsync("ACK"); // Acknowledge QUART input and end session
-                        session.ExpectedCommand = "START"; // Move to expecting TYPE
-                        session.AddContainer();
-                        await writer.WriteLineAsync("CONTAINER ADDED");
-                    }
-                }
-                else
-                {
-                    await writer.WriteLineAsync("ERR;Invalid Type");
-                }
-                break;
-
-            case "FRIDGE":
-                if (session.CurrentContainer == null)
-                {
-                    await writer.WriteLineAsync("ERR;No container available for fridge setup");
-                    return; // Exit if no container is available
-                }
-
-                if (command == "YES" || command == "NO")
-                {
-                    session.CurrentContainer.IsRefrigerated = (command == "YES");
-                    await writer.WriteLineAsync("ACK");
-                    session.ExpectedCommand = "WEIGHT"; // Expecting weight input
-                    await writer.WriteLineAsync("WEIGHT"); // Prompt for weight
-                }
-                else
-                {
-                    await writer.WriteLineAsync("ERR;Expected YES or NO");
-                }
-                break;
-
-            case "WEIGHT":
-                if (session.CurrentContainer == null)
-                {
-                    await writer.WriteLineAsync("ERR;No container available for weight input");
-                    return; // Exit if no container is available
-                }
-
-                if (int.TryParse(command, out int weight) && weight <= 20000)
-                {
-                    session.CurrentContainer.Weight = weight; // Set the weight for FULL container
-                    await writer.WriteLineAsync("ACK");
-                    session.ExpectedCommand = "START"; // Move to expecting TYPE
-                    session.AddContainer();
-                    await writer.WriteLineAsync("CONTAINER ADDED");
-
-                }
-                else
-                {
-                    await writer.WriteLineAsync("ERR;Weight Exceeded");
-                }
-                break;
-
-            case "VOLUME":
-                if (session.CurrentContainer == null)
-                {
-                    await writer.WriteLineAsync("ERR;No container available for volume input");
-                    return; // Exit if no container is available
-                }
-
-                if (int.TryParse(command, out int volume) && volume <= 40)
-                {
-                    session.CurrentContainer.Volume = volume; // Set the volume for HALF container
-                    await writer.WriteLineAsync("ACK");
-                    session.ExpectedCommand = "START"; // Move to expecting TYPE
-                    session.AddContainer();
-                    await writer.WriteLineAsync("CONTAINER ADDED");
-                }
-                else
-                {
-                    await writer.WriteLineAsync("ERR;Volume Exceeded");
-                }
-                break;
-
-            default:
-                await writer.WriteLineAsync("ERR;Unknown Command");
-                break;
-        }
-    }
-
-        private async Task GenerateReport(StreamWriter writer, ClientSession session)
-        {
-            decimal grandTotal = 0m;
-
-            // Calculate totals per container type
-            var fullTotal = CalculateContainerTotal(session.ContainerRecords, "FullSize");
-            var halfTotal = CalculateContainerTotal(session.ContainerRecords, "HalfSize");
-            var quartTotal = CalculateContainerTotal(session.ContainerRecords, "QuarterSize");
-
-            await writer.WriteLineAsync("\n---------------------------------------------Report----------------------------------------------");
-
-            // Full Size report
-            await writer.WriteLineAsync(String.Format("|{0, -15}|{1, -15}|{2, -15}|{3, -15}|{4, -15}|{5, -15}|","Type", "ID", "Weight", "Volume", "Refrid", "Fee"));
-
-            foreach (var record in session.ContainerRecords)
+            if (weight > FullSizeContainer.MaxWeight)
             {
-                string weight = record.Weight.HasValue ? $"{record.Weight}kg" : "N/A";
-                string volume = record.Volume.HasValue ? $"{record.Volume}m3" : "N/A";
-                await writer.WriteLineAsync(String.Format("|{0, -15}|{1, -15}|{2, -15}|{3, -15}|{4, -15}|{5, -15}|", record.GetType(), record.SerialNumber, weight, volume, record.IsRefrigerated, $"€{record.CalculateFee():F2}"));
+                throw new ExceededWeightException("Weight exceeds maximum allowed for FullSizeContainer.");
+            }
+            if (weight < 0)
+            {
+                throw new ExceededVolumeException("Weight exceeds minimum allowed for FullSizeContainer.");
             }
 
-            // Final report
-            await writer.WriteLineAsync("-------------------------------------------------------------------------------------------------");
-            await writer.WriteLineAsync(String.Format("|{0, -15}|{1, -15}|{2, -15}|{3, -15}|{4, -15}|{5, -15}|", "Full Total", "", "", "", "", $"€{fullTotal:F2}"));
-            await writer.WriteLineAsync(String.Format("|{0, -15}|{1, -15}|{2, -15}|{3, -15}|{4, -15}|{5, -15}|", "Half Total", "", "", "", "", $"€{halfTotal:F2}"));
-            await writer.WriteLineAsync(String.Format("|{0, -15}|{1, -15}|{2, -15}|{3, -15}|{4, -15}|{5, -15}|", "Quarter Total", "", "", "", "", $"€{quartTotal:F2}"));
+            // Step 2: Prompt for refrigeration status
+            writer.WriteLine("FRIDGE"); // Prompt client for refrigeration status
+            string fridgeInput = reader.ReadLine();
+            if (fridgeInput == null)
+            {
+                throw new InvalidOperationException("Invalid refrigeration input.");
+            }
+            fridgeInput = fridgeInput.Trim().ToUpper();
 
-            grandTotal = fullTotal + halfTotal + quartTotal;
-            await writer.WriteLineAsync(String.Format("|{0, -15}|{1, -15}|{2, -15}|{3, -15}|{4, -15}|{5, -15}|", "Grand Total", "", "", "", "", $"€{grandTotal:F2}"));
-            await writer.WriteLineAsync("-------------------------------------------------------------------------------------------------\n");
+            bool isRefrigerated = false;
+            if (fridgeInput == "NO")
+            {
+                isRefrigerated = false;
+            }
+            else if (fridgeInput == "YES")
+            {
+                isRefrigerated = true;
+            }
+            else
+            {
+                throw new InvalidOperationException("Invalid refrigeration input.");
+            }
+
+            // Step 3: Create and add the container
+            FullSizeContainer fullSizeContainer = new FullSizeContainer
+            {
+                Weight = weight,
+                IsRefrigerated = isRefrigerated,
+                OriginCountry = "Unknown"           // Origin
+            };
+
+            ContainerRecords.Add(fullSizeContainer); // Add to the container records
+
+            // Step 4: Acknowledge success
+            writer.WriteLine("ACK");
         }
 
-        private decimal CalculateContainerTotal(List<Container> containers, string containerType)
+        /// <summary>
+        /// Handles logic for creating a half-size container.
+        /// </summary>
+        /// <param name="writer">StreamWriter to send responses to the client.</param>
+        /// <param name="reader">StreamReader to receive input from the client.</param>
+        private void HalfLogic(StreamWriter writer, StreamReader reader)
         {
-            decimal total = 0m;
-            foreach (var container in containers)
+            // Step 1: Prompt for weight
+            writer.WriteLine("VOLUME"); // Prompt client for weight
+            string volumeInput = reader.ReadLine(); // Read weight from client
+
+            if (!int.TryParse(volumeInput, out int volume))
             {
-                if (container.GetType() == containerType)
-                {
-                    total += container.CalculateFee();
-                }
+                throw new InvalidOperationException("Invalid volume input from client.");
             }
-            return total;
+            if (volume > HalfSizeContainer.MaxVolume)
+            {
+                throw new ExceededVolumeException("Volume exceeds maximum allowed for HalfSizeContainer.");
+            }
+            if (volume < 0)
+            {
+                throw new ExceededVolumeException("Volume exceeds minimum allowed for HalfSizeContainer.");
+            }
+
+            // Step 3: Create and add the container
+            HalfSizeContainer halfSizeContainer = new HalfSizeContainer()
+            {
+                Volume = volume,
+                OriginCountry = "Unknown"           // Origin
+            };
+
+            ContainerRecords.Add(halfSizeContainer); // Add to the container records
+
+            // Step 4: Acknowledge success
+            writer.WriteLine("ACK");
         }
 
-        private Container CreateContainer(string containerType)
+        /// <summary>
+        /// Processes a client command and performs the appropriate actions.
+        /// </summary>
+        /// <param name="command">The command received from the client.</param>
+        /// <param name="writer">StreamWriter to send responses to the client.</param>
+        /// <param name="client">The TcpClient connection instance.</param>
+        /// <param name="reader">StreamReader to receive input from the client.</param>
+        private void ProcessCommand(string command, StreamWriter writer, TcpClient client, StreamReader reader)
         {
-            switch (containerType)
+            if (command == "START")
             {
-                case "FULL":
-                    return new FullSizeContainer();
-                case "HALF":
-                    return new HalfSizeContainer();
-                case "QUART":
-                    return new QuarterSizeContainer();
-                default:
-                    return null;
+                writer.WriteLine("TYPE"); // Prompt for type
+                string typeInput = reader.ReadLine(); // Read type from client
+                if (typeInput == null)
+                {
+                    throw new InvalidOperationException("Invalid type input.");
+                }
+
+                switch (typeInput.Trim().ToUpper())
+                {
+                    case "FULL":
+                        FullLogic(writer, reader);
+                        client.Close();
+                        break;
+                    case "HALF":
+                        HalfLogic(writer, reader);
+                        client.Close();
+                        break;
+                    case "QUART":
+                        writer.WriteLine("ACK");
+                        ContainerRecords.Add(new QuarterSizeContainer()
+                        {
+                            OriginCountry = "Unknown"
+                        });
+                        client.Close();
+                        break;
+                    default:
+                        throw new ContainerException("ERROR");
+                }
             }
+            else if (command == "STOP")
+            {
+                writer.WriteLine("ACK");
+                GenerateReport(writer);
+                client.Close();
+            }
+            else
+            {
+                throw new ContainerException("ERROR INVALID COMMAND");
+            }
+        }
+
+        /// <summary>
+        /// Generates a report summarizing all container records.
+        /// </summary>
+        /// <param name="writer">StreamWriter to send the report to the client.</param>
+        private void GenerateReport(StreamWriter writer)
+        {
+            decimal fullSizeTotal = 0, halfSizeTotal = 0, quarterSizeTotal = 0, grandTotal = 0;
+
+            writer.WriteLine("\n--------------------------------------------Report---------------------------------------------");
+            writer.WriteLine(String.Format("|{0, -10}|{1, -10}|{2, -10}|{3, -10}|{4, -10}|{5, -10}|{6, -10}", "ID", "Type", "Origin","Refrig", "Weight", "Volume", "Fee"));
+
+            foreach (Container container in ContainerRecords)
+            {
+                writer.WriteLine(container.ToString()); // Call the ToString method
+
+                decimal fee = container.CalculateFee();
+
+                switch (container.GetType())
+                {
+                    case "FullSize":
+                        fullSizeTotal += fee;
+                        break;
+                    case "HalfSize":
+                        halfSizeTotal += fee;
+                        break;
+                    case "QuarterSize":
+                        quarterSizeTotal += fee;
+                        break;
+                }
+            }
+
+            grandTotal = fullSizeTotal + halfSizeTotal + quarterSizeTotal;
+
+            writer.WriteLine("-----------------------------------------------------------------------------------------------");
+            writer.WriteLine($"Full Size Total: €{fullSizeTotal:F2}");
+            writer.WriteLine($"Half Size Total: €{halfSizeTotal:F2}");
+            writer.WriteLine($"Quarter Size Total: €{quarterSizeTotal:F2}");
+            writer.WriteLine($"Grand Total: €{grandTotal:F2}");
+            writer.WriteLine("-----------------------------------------------------------------------------------------------");
         }
     }
 }

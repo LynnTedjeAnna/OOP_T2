@@ -1,9 +1,7 @@
-
 using System;
 using Xunit;
-using ContainerShipping;
 
-namespace ContainerShippingTests
+namespace Shipping_container.Tests
 {
     public class HalfSizeContainerTests
     {
@@ -53,31 +51,8 @@ namespace ContainerShippingTests
             // Arrange
             var container = new HalfSizeContainer();
 
-            // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => container.CalculateFee());
-        }
-
-        [Fact]
-        public void SetWeight_ThrowsInvalidOperationException()
-        {
-            // Arrange
-            var container = new HalfSizeContainer();
-
-            // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => container.Weight = 100);
-        }
-
-        [Fact]
-        public void SetIsRefrigerated_UpdatesRefrigerationStatus()
-        {
-            // Arrange
-            var container = new HalfSizeContainer();
-
-            // Act
-            container.IsRefrigerated = true;
-
             // Assert
-            Assert.True(container.IsRefrigerated);
+            Assert.Equal(0, container.CalculateFee());
         }
 
         [Fact]
