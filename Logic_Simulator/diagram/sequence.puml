@@ -1,0 +1,28 @@
+@startuml
+
+actor User
+
+participant "xor_gate" as XOR
+participant "Console" as Console
+
+User -> XOR : set_input(0, 0)
+User -> XOR : set_input(1, 0)
+User -> XOR : get_output(0)
+XOR -> Console : print("0 0 0")
+
+User -> XOR : set_input(0, 0)
+User -> XOR : set_input(1, 1)
+User -> XOR : get_output(0)
+XOR -> Console : print("0 1 1")
+
+User -> XOR : set_input(0, 1)
+User -> XOR : set_input(1, 0)
+User -> XOR : get_output(0)
+XOR -> Console : print("1 0 1")
+
+User -> XOR : set_input(0, 1)
+User -> XOR : set_input(1, 1)
+User -> XOR : get_output(0)
+XOR -> Console : print("1 1 0")
+
+@enduml

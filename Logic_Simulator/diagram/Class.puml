@@ -1,0 +1,41 @@
+@startuml
+interface logic_gate {
+  + get_input(pin: uint8_t) : bool
+  + get_output(pin: uint8_t) : bool
+  + set_input(pin: uint8_t, value: bool) : void
+  + connect_output(output_pin: uint8_t, other: logic_gate, input_pin: uint8_t) : void
+}
+
+class not_gate {
+  - value : bool
+  + get_input(pin: uint8_t) : bool
+  + get_output(pin: uint8_t) : bool
+  + set_input(pin: uint8_t, value: bool) : void
+  + connect_output(output_pin: uint8_t, other: logic_gate, input_pin: uint8_t) : void
+}
+
+class and_gate {
+  - value : bool
+  + get_input(pin: uint8_t) : bool
+  + get_output(pin: uint8_t) : bool
+  + set_input(pin: uint8_t, value: bool) : void
+  + connect_output(output_pin: uint8_t, other: logic_gate, input_pin: uint8_t) : void
+}
+
+class invalid_pin_exception {
+  + invalid_pin_exception() : void
+  + invalid_pin_exception(message: string) : void
+}
+
+class connection{
+}
+
+logic_gate -->  connection
+
+logic_gate <|-- not_gate
+logic_gate <|-- and_gate
+
+
+logic_gate --> invalid_pin_exception : throws exception
+
+@enduml
