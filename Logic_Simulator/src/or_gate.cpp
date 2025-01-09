@@ -9,9 +9,8 @@
 /// @param pin The pin number to set the input value for (0 or 1).
 /// @param value The value to set (must be 0 or 1).
 /// @throws Exception if the pin or value is invalid.
-void Or_gate::set_input(uint8_t pin, uint8_t value) {
+void Or_gate::SetInput(uint8_t pin, bool value) {
     validate_pin(pin, max_input_pins, "OR");
-    validate_value(value, "OR");
 
     input_value[pin] = value;
 
@@ -24,6 +23,6 @@ void Or_gate::set_input(uint8_t pin, uint8_t value) {
 
     output_value[0] = input_value[0] || input_value[1];
     for (uint32_t i = 0; i < connections.size(); i++) {
-        connections[i].target_component->set_input(connections[i].input_pin, output_value[0]);
+        connections[i].target_component->SetInput(connections[i].input_pin, output_value[0]);
     }
 }

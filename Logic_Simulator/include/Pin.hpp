@@ -3,14 +3,14 @@
 //
 #ifndef LOGIC_SIMULATOR_PIN_HPP
 #define LOGIC_SIMULATOR_PIN_HPP
-#include "ILogicComponent.hpp"
+#include "base_logic.hpp"
 
-class Pin : public ILogicComponent {
+class Pin : public base_logic {
 public:
-    Pin(): ILogicComponent(1, 1, "PIN") {};  // Constructor to initialize the state of the NOT gate.
+    Pin(): base_logic(1, 1, "PIN") {};  // Constructor to initialize the state of the NOT gate.
 
     // Sets the state of an input pin.
-    void set_input(uint8_t pin, uint8_t value) override;
+    void SetInput(uint8_t pin, bool value) override;
 };
 
 #endif //LOGIC_SIMULATOR_PIN_HPP

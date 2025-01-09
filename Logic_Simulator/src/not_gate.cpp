@@ -9,13 +9,12 @@
 /// @param pin Must always be 0.
 /// @param value The value to set (must be 0 or 1).
 /// @throws Exception if the pin or value is invalid.
-void Not_gate::set_input(uint8_t pin, uint8_t value) {
+void Not_gate::SetInput(uint8_t pin, bool value) {
     validate_pin(pin, max_input_pins, "AND");
-    validate_value(value, "AND");
     input_value[pin] = value;
     output_value[pin] = !value;
 
     for (uint32_t i = 0; i < connections.size(); i++) {
-        connections[i].target_component->set_input(connections[i].input_pin, output_value[pin]);
+        connections[i].target_component->SetInput(connections[i].input_pin, output_value[pin]);
     }
 }

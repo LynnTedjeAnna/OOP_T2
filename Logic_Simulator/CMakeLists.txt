@@ -15,4 +15,5 @@ src/Pin.cpp
 src/xor_gate.cpp
 src/half_adder.cpp
 src/full_adder.cpp
+src/base_logic.cpp
 )

@@ -3,18 +3,18 @@
 //
 #ifndef LOGIC_SIMULATOR_XOR_GATE_HPP
 #define LOGIC_SIMULATOR_XOR_GATE_HPP
-#include "ILogicComponent.hpp"
+#include "base_logic.hpp"
 #include "not_gate.hpp"
 #include "or_gate.hpp"
 #include "and_gate.hpp"
 #include "Pin.hpp"
 
-class Xor_gate : public ILogicComponent {
+class Xor_gate : public base_logic {
 public:
     Xor_gate();   // Declaration of the constructor
 
     // Sets the state of an input pin.
-    void set_input(uint8_t pin, uint8_t value) override;
+    void SetInput(uint8_t pin, bool value) override;
 
 private:
     Not_gate not1;

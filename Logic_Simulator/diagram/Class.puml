@@ -1,25 +1,25 @@
 @startuml
 interface ILogicComponent {
-  + get_input(pin: uint8_t) : bool
-  + get_output(pin: uint8_t) : bool
-  + set_input(pin: uint8_t, value: bool) : void
-  + connect_output(output_pin: uint8_t, other: ILogicComponent, input_pin: uint8_t) : void
+  + GetInput(pin: uint8_t) : bool
+  + GetOutput(pin: uint8_t) : bool
+  + SetInput(pin: uint8_t, value: bool) : void
+  + ConnectOutput(output_pin: uint8_t, other: ILogicComponent, input_pin: uint8_t) : void
 }
 
 class not_gate {
   - value : bool
-  + get_input(pin: uint8_t) : bool
-  + get_output(pin: uint8_t) : bool
-  + set_input(pin: uint8_t, value: bool) : void
-  + connect_output(output_pin: uint8_t, other: ILogicComponent, input_pin: uint8_t) : void
+  + GetInput(pin: uint8_t) : bool
+  + GetOutput(pin: uint8_t) : bool
+  + SetInput(pin: uint8_t, value: bool) : void
+  + ConnectOutput(output_pin: uint8_t, other: ILogicComponent, input_pin: uint8_t) : void
 }
 
 class and_gate {
   - value : bool
-  + get_input(pin: uint8_t) : bool
-  + get_output(pin: uint8_t) : bool
-  + set_input(pin: uint8_t, value: bool) : void
-  + connect_output(output_pin: uint8_t, other: ILogicComponent, input_pin: uint8_t) : void
+  + GetInput(pin: uint8_t) : bool
+  + GetOutput(pin: uint8_t) : bool
+  + SetInput(pin: uint8_t, value: bool) : void
+  + ConnectOutput(output_pin: uint8_t, other: ILogicComponent, input_pin: uint8_t) : void
 }
 
 class invalid_pin_exception {
