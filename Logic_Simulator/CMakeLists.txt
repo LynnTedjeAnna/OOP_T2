@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 3.25)
 project(Logic_Simulator)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -14,4 +14,5 @@ src/or_gate.cpp
 src/Pin.cpp
 src/xor_gate.cpp
 src/half_adder.cpp
-src/full_adder.cpp)
+src/full_adder.cpp
+)

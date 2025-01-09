@@ -1,9 +1,9 @@
 @startuml
-interface logic_gate {
+interface ILogicComponent {
   + get_input(pin: uint8_t) : bool
   + get_output(pin: uint8_t) : bool
   + set_input(pin: uint8_t, value: bool) : void
-  + connect_output(output_pin: uint8_t, other: logic_gate, input_pin: uint8_t) : void
+  + connect_output(output_pin: uint8_t, other: ILogicComponent, input_pin: uint8_t) : void
 }
 
 class not_gate {
@@ -11,7 +11,7 @@ class not_gate {
   + get_input(pin: uint8_t) : bool
   + get_output(pin: uint8_t) : bool
   + set_input(pin: uint8_t, value: bool) : void
-  + connect_output(output_pin: uint8_t, other: logic_gate, input_pin: uint8_t) : void
+  + connect_output(output_pin: uint8_t, other: ILogicComponent, input_pin: uint8_t) : void
 }
 
 class and_gate {
@@ -19,7 +19,7 @@ class and_gate {
   + get_input(pin: uint8_t) : bool
   + get_output(pin: uint8_t) : bool
   + set_input(pin: uint8_t, value: bool) : void
-  + connect_output(output_pin: uint8_t, other: logic_gate, input_pin: uint8_t) : void
+  + connect_output(output_pin: uint8_t, other: ILogicComponent, input_pin: uint8_t) : void
 }
 
 class invalid_pin_exception {
@@ -30,12 +30,12 @@ class invalid_pin_exception {
 class connection{
 }
 
-logic_gate -->  connection
+ILogicComponent -->  connection
 
-logic_gate <|-- not_gate
-logic_gate <|-- and_gate
+ILogicComponent <|-- not_gate
+ILogicComponent <|-- and_gate
 
 
-logic_gate --> invalid_pin_exception : throws exception
+ILogicComponent --> invalid_pin_exception : throws exception
 
 @enduml

@@ -5,27 +5,14 @@
 #define LOGIC_SIMULATOR_FULL_ADDER_HPP
 #include "half_adder.hpp"
 
-class Full_adder : public logic_gate{
+class Full_adder : public ILogicComponent{
 public:
-    Full_adder();  // Constructor to initialize the state of the NOT gate.
-
-    // Returns the state of an input pin.
-    uint8_t get_input(uint8_t pin) override;
-
-    // Returns the state of an output pin.
-    uint8_t get_output(uint8_t pin) override;
-
-    // Connects an output of this component to an input of another component.
-    void connect_output(uint8_t output_pin, logic_gate* other, uint8_t input_pin) override;
+    Full_adder(); // Declaration of the constructor
 
     // Sets the state of an input pin.
     void set_input(uint8_t pin, uint8_t value) override;
 
 private:
-    uint8_t input_value[3] = {255, 255 , 255};
-    uint8_t output_value[2] = {255, 255};
-    std::vector<Connection> connection;
-
     Half_adder half_adder;
     Half_adder half2_adder;
     Or_gate or_gate;

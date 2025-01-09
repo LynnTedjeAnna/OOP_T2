@@ -8,7 +8,7 @@
 /// @param output The output pin number of the source logic gate.
 /// @param target A pointer to the target logic gate to connect to.
 /// @param input The input pin number of the target logic gate.
-Connection::Connection(uint8_t output, logic_gate* target, uint8_t input) {
+Connection::Connection(uint8_t output, ILogicComponent* target, uint8_t input) {
     output_pin = output;
     target_component = target;
     input_pin = input;
