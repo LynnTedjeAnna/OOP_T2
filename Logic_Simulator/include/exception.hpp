@@ -4,6 +4,9 @@
 #ifndef LOGIC_SIMULATOR_EXCEPTION_HPP
 #define LOGIC_SIMULATOR_EXCEPTION_HPP
 
+/*
+ * ConnectionAlreadyCreated
+ * */
 #include <exception>
 #include <string>
 

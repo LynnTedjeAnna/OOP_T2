@@ -17,14 +17,17 @@ public:
     base_logic(uint8_t input_pins = 2, uint8_t output_pins = 1, const std::string& component_name = "Base");
 
     void validate_pin(uint8_t pin, uint8_t max_pin, const std::string& gate_name);
-    uint8_t GetInput(uint8_t pin) override;
-    uint8_t GetOutput(uint8_t pin) override;
+    bool GetInput(uint8_t pin) override;
+    bool GetOutput(uint8_t pin) override;
     void ConnectOutput(uint8_t output_pin, ILogicComponent* other, uint8_t input_pin) override;
 
 //private:
     std::vector<Connection> connections;   // This will store the connections for each logic gate
-    uint8_t* input_value = nullptr;        // Default input values (uninitialized)
-    uint8_t* output_value = nullptr;       // Default output value (uninitialized)
+    bool* input_value = nullptr;        // Default input values (uninitialized)
+    bool* output_value = nullptr;       // Default output value (uninitialized)
+    uint8_t max_input_pins = 0;            // Default maximum input pins
+    uint8_t max_output_pins = 0;           // Default maximum output pins
+    std::string component = "Component";
 };
 
 #endif //LOGIC_SIMULATOR_BASE_LOGIC_HPP
