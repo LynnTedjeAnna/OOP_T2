@@ -191,7 +191,7 @@ int main() {
 }
 
 void connectionTest() {
-    printf("/n");
+    printf("\n");
 
     And_gate andGate;
     Not_gate notGate;
